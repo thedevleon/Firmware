@@ -33,7 +33,7 @@ set(config_module_list
 	#drivers/hott
 	#drivers/hott/hott_telemetry
 	#drivers/hott/hott_sensors
-	drivers/blinkm
+	#drivers/blinkm
 	drivers/airspeed
 	drivers/ets_airspeed
 	drivers/meas_airspeed
@@ -46,7 +46,7 @@ set(config_module_list
 	drivers/pwm_input
 	drivers/camera_trigger
 	drivers/bst
-	drivers/snapdragon_rc_pwm
+	#drivers/snapdragon_rc_pwm
 	drivers/lis3mdl
 
 	#
