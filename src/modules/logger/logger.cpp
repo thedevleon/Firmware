@@ -6,7 +6,6 @@
 
 #include <uORB/uORBTopics.h>
 #include <px4_getopt.h>
-#include <malloc.h>
 
 #define DBGPRINT
 
