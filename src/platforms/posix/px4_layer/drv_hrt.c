@@ -128,6 +128,12 @@ int px4_clock_settime(clockid_t clk_id, struct timespec *tp)
 
 #include "dspal_time.h"
 
+int px4_clock_settime(clockid_t clk_id, struct timespec *tp)
+{
+	/* do nothing right now */
+	return 0;
+}
+
 int px4_clock_gettime(clockid_t clk_id, struct timespec *tp)
 {
 	return clock_gettime(clk_id, tp);

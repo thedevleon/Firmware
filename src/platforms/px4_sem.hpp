@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2012-2014 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2016 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,39 +32,37 @@
  ****************************************************************************/
 
 /**
- * @file mavlink.c
- * Define MAVLink specific parameters
+ * @file px4_sem.hpp
  *
- * @author Lorenz Meier <lorenz@px4.io>
+ * C++ synchronization helpers
  */
 
-#include <px4_config.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include "mavlink_bridge_header.h"
-#include <systemlib/param/param.h>
+#pragma once
 
-mavlink_system_t mavlink_system = {
-	1,
-	1
-}; // System ID, 1-255, Component/Subsystem ID, 1-255
+#include "px4_sem.h"
 
-/*
- * Internal function to give access to the channel status for each channel
+
+/**
+ * @class Smart locking object that uses a semaphore. It automatically
+ * takes the lock when created and releases the lock when the object goes out of
+ * scope. Use like this:
+ *
+ *   px4_sem_t my_lock;
+ *   int ret = px4_sem_init(&my_lock, 0, 1);
+ *   ...
+ *
+ *   {
+ *       SmartLock smart_lock(my_lock);
+ *       //critical section start
+ *       ...
+ *       //critical section end
+ *   }
  */
-extern mavlink_status_t *mavlink_get_channel_status(uint8_t channel)
+class SmartLock
 {
-	static mavlink_status_t m_mavlink_status[MAVLINK_COMM_NUM_BUFFERS];
-	return &m_mavlink_status[channel];
-}
-
-/*
- * Internal function to give access to the channel buffer for each channel
- */
-extern mavlink_message_t *mavlink_get_channel_buffer(uint8_t channel)
-{
-	static mavlink_message_t m_mavlink_buffer[MAVLINK_COMM_NUM_BUFFERS];
-	return &m_mavlink_buffer[channel];
-}
+public:
+	SmartLock(px4_sem_t &sem) : _sem(sem) { do {} while (px4_sem_wait(&_sem) != 0); }
+	~SmartLock() { px4_sem_post(&_sem); }
+private:
+	px4_sem_t &_sem;
+};

@@ -217,6 +217,7 @@ private:
 	int		_accel_sub[SENSOR_COUNT_MAX];	/**< raw accel data subscription */
 	int		_mag_sub[SENSOR_COUNT_MAX];	/**< raw mag data subscription */
 	int		_baro_sub[SENSOR_COUNT_MAX];	/**< raw baro data subscription */
+	int		_actuator_ctrl_0_sub;		/**< attitude controls sub */
 	unsigned	_gyro_count;			/**< raw gyro data count */
 	unsigned	_accel_count;			/**< raw accel data count */
 	unsigned	_mag_count;			/**< raw mag data count */
@@ -951,9 +952,9 @@ Sensors::parameters_update()
 	DevHandle h_baro;
 	DevMgr::getHandle(BARO0_DEVICE_PATH, h_baro);
 
-#ifndef __PX4_QURT
+#if !defined(__PX4_QURT) && !defined(__RPI2)
 
-	// TODO: this needs fixing for QURT
+	// TODO: this needs fixing for QURT and Raspberry Pi
 	if (!h_baro.isValid()) {
 		warnx("ERROR: no barometer found on %s (%d)", BARO0_DEVICE_PATH, h_baro.getError());
 		return ERROR;
@@ -1519,7 +1520,7 @@ Sensors::parameter_update_poll(bool forced)
 bool
 Sensors::apply_gyro_calibration(DevHandle &h, const struct gyro_calibration_s *gcal, const int device_id)
 {
-#ifndef __PX4_QURT
+#if !defined(__PX4_QURT) && !defined(__RPI2)
 
 	/* On most systems, we can just use the IOCTL call to set the calibration params. */
 	const int res = h.ioctl(GYROIOCSSCALE, (long unsigned int)gcal);
@@ -1540,7 +1541,7 @@ Sensors::apply_gyro_calibration(DevHandle &h, const struct gyro_calibration_s *g
 bool
 Sensors::apply_accel_calibration(DevHandle &h, const struct accel_calibration_s *acal, const int device_id)
 {
-#ifndef __PX4_QURT
+#if !defined(__PX4_QURT) && !defined(__RPI2)
 
 	/* On most systems, we can just use the IOCTL call to set the calibration params. */
 	const int res = h.ioctl(ACCELIOCSSCALE, (long unsigned int)acal);
@@ -1561,7 +1562,7 @@ Sensors::apply_accel_calibration(DevHandle &h, const struct accel_calibration_s 
 bool
 Sensors::apply_mag_calibration(DevHandle &h, const struct mag_calibration_s *mcal, const int device_id)
 {
-#ifndef __PX4_QURT
+#if !defined(__PX4_QURT) && !defined(__RPI2)
 
 	/* On most systems, we can just use the IOCTL call to set the calibration params. */
 	const int res = h.ioctl(MAGIOCSSCALE, (long unsigned int)mcal);
@@ -1701,10 +1702,10 @@ Sensors::adc_poll(struct sensor_combined_s &raw)
 			}
 
 			if (updated_battery) {
-				// XXX TODO: throttle is hardcoded here. The dependency to throttle would need to be
-				// removed, or it needs to be subscribed to actuator controls.
-				const float throttle = 0.0f;
-				_battery.updateBatteryStatus(t, bat_voltage_v, bat_current_a, throttle, &_battery_status);
+				actuator_controls_s ctrl;
+				orb_copy(ORB_ID(actuator_controls_0), _actuator_ctrl_0_sub, &ctrl);
+				_battery.updateBatteryStatus(t, bat_voltage_v, bat_current_a, ctrl.control[actuator_controls_s::INDEX_THROTTLE],
+							     &_battery_status);
 
 				/* announce the battery status if needed, just publish else */
 				if (_battery_pub != nullptr) {
@@ -2064,7 +2065,7 @@ Sensors::task_main()
 	/* This calls a sensors_init which can have different implementations on NuttX, POSIX, QURT. */
 	ret = sensors_init();
 
-#ifndef __PX4_QURT
+#if !defined(__PX4_QURT) && !defined(__RPI2)
 	// TODO: move adc_init into the sensors_init call.
 	ret = ret || adc_init();
 #endif
@@ -2123,6 +2124,7 @@ Sensors::task_main()
 	_params_sub = orb_subscribe(ORB_ID(parameter_update));
 	_rc_parameter_map_sub = orb_subscribe(ORB_ID(rc_parameter_map));
 	_manual_control_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
+	_actuator_ctrl_0_sub = orb_subscribe(ORB_ID(actuator_controls_0));
 
 	/*
 	 * do advertisements
